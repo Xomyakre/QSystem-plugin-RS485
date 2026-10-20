@@ -50,22 +50,18 @@ public class EventSender implements IChangeCustomerStateEvent, IClientboardRS485
             case STATE_WORK_SECONDARY:
                 break;
             case STATE_DEAD:
-                nom = "     ";
-                break;
             case STATE_FINISH:
-                nom = "     ";
-                break;
             case STATE_POSTPONED:
-                nom = "     ";
-                break;
             case STATE_REDIRECT:
+                // Очищаем табло (5 пробелов)
                 nom = "     ";
                 break;
-            default:// нужная вещь. чтобы отсечь состояния, которые не при чем в зональном табло
-                nom = "     ";
+            default:
+                // Для других состояний не отправляем на табло
                 return;
-
         }
+        
+        // Отправляем событие на табло
         if (qc.getUser() != null) {
             Sender485.getInstance().send(new Event(qc.getUser().getPoint(), nom, qc.getPrefix(), qc.getNumber(), cs));
         }

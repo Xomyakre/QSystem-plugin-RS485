@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.xml.bind.JAXBException;
 import ru.apertum.cbrs485.core.RS485Property.Operator;
+import ru.apertum.qsystem.common.CustomerState;
 import ru.evgenic.rxtx.serialPort.ISerialPort;
 import ru.evgenic.rxtx.serialPort.RxtxSerialPort;
 
@@ -96,6 +97,17 @@ public class Sender485 {
         if (sndThread.getState() == Thread.State.NEW || sndThread.getState() == Thread.State.TERMINATED) {
             sndThread.start();
         }
+        
+        // Если это состояние завершения, очистим очередь для этого окна
+        // чтобы предотвратить появление номера после очистки табло
+        if (event.state == CustomerState.STATE_FINISH 
+                || event.state == CustomerState.STATE_DEAD
+                || event.state == CustomerState.STATE_POSTPONED
+                || event.state == CustomerState.STATE_REDIRECT) {
+            // Удаляем все отложенные события для этого окна
+            stream.removeIf(e -> e.point.equals(event.point));
+        }
+        
         try {
             stream.put(event);
         } catch (InterruptedException ex) {

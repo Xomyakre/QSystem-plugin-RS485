@@ -25,13 +25,13 @@ jar.doLast {
     ant.copy file: "${buildDir}/libs/" + archivesBaseName + '-' + version + '.jar', todir: "${buildDir}/../"
 
     File file = new File("adminRS485.bat")
-    file.write("java -cp " + archivesBaseName + '-' + version + ".jar" + ";lib/RXTXLibrary.jar;lib/RXTXcomm.jar ru.apertum.cbrs485.test.TestRS \n")
-    file.append("\n")
+    file.write("@echo off\n")
+    file.append("java -cp \"%~dp0" + archivesBaseName + '-' + version + ".jar;%~dp0lib/RXTXLibrary.jar;%~dp0lib/RXTXcomm.jar;%~dp0lib/QSystem.jar\" ru.apertum.cbrs485.test.TestRS\n")
     file.append("pause\n")
     file = new File("adminRS485.sh")
     file.write("#!/bin/sh\n")
     file.append("\n")
-    file.append("java -cp " + archivesBaseName + '-' + version + ".jar" + ":lib/RXTXLibrary.jar:lib/RXTXcomm.jar ru.apertum.cbrs485.test.TestRS \n")
+    file.append("java -cp " + archivesBaseName + '-' + version + ".jar:lib/RXTXLibrary.jar:lib/RXTXcomm.jar:lib/QSystem.jar ru.apertum.cbrs485.test.TestRS \n")
 
     file = new File("version.bat")
     file.write("java -cp " + archivesBaseName + '-' + version + ".jar" + " ru.apertum.cbrs485.core.Version \n")

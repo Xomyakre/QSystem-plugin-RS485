@@ -9,7 +9,6 @@ QResources/out/*
 QResources/build/*
 classes/*
 logs/*
-rxtx*
 config/bs.html
 config/mtplugin.properties
 config/zeon.adr

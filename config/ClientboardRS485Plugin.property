@@ -1,0 +1,13 @@
+#Save from test app.
+#Sun Oct 11 21:53:51 AST 2015
+port.name=COM6
+port.parity=1
+port.stopbits=1
+protocol.svetovodm.fontsize=14
+protocol.akis.brightness=254
+protocol.svetovodm.fontname=Arial
+protocol.svetovodm.he=9
+protocol.svetovodm.len=3
+port.speed=115200
+port.bits=8
+protocol=2

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rs485 bits="8" parity="true" delay="200" name="COM3" speed="57600" stopBits="1">
+    <operators>
+        <operator addressRS="32" comPort="COM3" point="2" protocol="0"/>
+        <operator addressRS="32" comPort="COM3" point="101" protocol="0"/>
+    </operators>
+    <ports>
+        <port bits="8" parity="false" name="COM2" speed="14400" stopBits="1"/>
+        <port bits="8" parity="true" name="COM3" speed="57600" stopBits="1"/>
+        <port bits="8" parity="false" name="COM4" speed="57600" stopBits="1"/>
+        <port bits="8" parity="true" name="COM5" speed="115200" stopBits="1"/>
+    </ports>
+    <protocols>
+        <akis brightness="254" default="false">Akis</akis>
+        <docash default="false">DoCash</docash>
+        <ledDisplayRu default="false">led-displays.ru</ledDisplayRu>
+        <qsystem default="true">QSystem</qsystem>
+        <solt default="false">Solt</solt>
+        <ssi default="false">SSI</ssi>
+        <svetovod default="false">Svetovod</svetovod>
+        <svetovodM fontName="Arial" fontSize="12" height="9" lenghtBy8="3" default="false">Svetovod M</svetovodM>
+        <pr9800 align="0" color="1" dispNo="0" displayType="0" font="0" opt="0" speed="0" default="false">PR9800</pr9800>
+    </protocols>
+</rs485>

@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'idea'
+}
+
+group 'ru.apertum.qsystem'
+version "${appVersion}"
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
+
+wrapper {
+    gradleVersion = '6.1.1' // Желаемая версия
+}
+
+repositories {
+    mavenCentral()
+}
+
+jar.doLast {
+    println("Copy artefact from \"${buildDir}\\libs\\" + archivesBaseName + '-' + version + ".jar" + "\" to : ${buildDir}\\..\\")
+    ant.copy file: "${buildDir}/libs/" + archivesBaseName + '-' + version + '.jar', todir: "${buildDir}/../"
+
+    File file = new File("adminRS485.bat")
+    file.write("java -cp " + archivesBaseName + '-' + version + ".jar" + ";lib/RXTXLibrary.jar;lib/RXTXcomm.jar ru.apertum.cbrs485.test.TestRS \n")
+    file.append("\n")
+    file.append("pause\n")
+    file = new File("adminRS485.sh")
+    file.write("#!/bin/sh\n")
+    file.append("\n")
+    file.append("java -cp " + archivesBaseName + '-' + version + ".jar" + ":lib/RXTXLibrary.jar:lib/RXTXcomm.jar ru.apertum.cbrs485.test.TestRS \n")
+
+    file = new File("version.bat")
+    file.write("java -cp " + archivesBaseName + '-' + version + ".jar" + " ru.apertum.cbrs485.core.Version \n")
+    file.append("\n")
+    file.append("pause\n")
+}
+
+dependencies {
+    compile fileTree(dir: 'lib', include: '**/*.jar')
+    compile(group: 'org.jdesktop', name: 'appframework', version: '1.0.3')
+    compile(group: 'org.netbeans.external', name: 'AbsoluteLayout', version: 'RELEASE111')
+}

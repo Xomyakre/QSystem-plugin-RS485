@@ -20,18 +20,33 @@ repositories {
     mavenCentral()
 }
 
+// Создание "fat JAR" со всеми зависимостями
+jar {
+    manifest {
+        attributes 'Main-Class': 'ru.apertum.cbrs485.test.TestRS'
+    }
+    
+    // Включаем все зависимости в один JAR
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    // Исключаем подписи из зависимостей (чтобы избежать SecurityException)
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+}
+
 jar.doLast {
     println("Copy artefact from \"${buildDir}\\libs\\" + archivesBaseName + '-' + version + ".jar" + "\" to : ${buildDir}\\..\\")
     ant.copy file: "${buildDir}/libs/" + archivesBaseName + '-' + version + '.jar', todir: "${buildDir}/../"
 
     File file = new File("adminRS485.bat")
     file.write("@echo off\n")
-    file.append("java -cp \"%~dp0" + archivesBaseName + '-' + version + ".jar;%~dp0lib/RXTXLibrary.jar;%~dp0lib/RXTXcomm.jar;%~dp0lib/QSystem.jar\" ru.apertum.cbrs485.test.TestRS\n")
+    file.append("java -jar \"%~dp0" + archivesBaseName + '-' + version + ".jar\"\n")
     file.append("pause\n")
     file = new File("adminRS485.sh")
     file.write("#!/bin/sh\n")
     file.append("\n")
-    file.append("java -cp " + archivesBaseName + '-' + version + ".jar:lib/RXTXLibrary.jar:lib/RXTXcomm.jar:lib/QSystem.jar ru.apertum.cbrs485.test.TestRS \n")
+    file.append("java -jar " + archivesBaseName + '-' + version + ".jar\n")
 
     file = new File("version.bat")
     file.write("java -cp " + archivesBaseName + '-' + version + ".jar" + " ru.apertum.cbrs485.core.Version \n")

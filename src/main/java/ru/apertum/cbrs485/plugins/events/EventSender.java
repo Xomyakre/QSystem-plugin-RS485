@@ -1,5 +1,5 @@
 /*
- * 
+ *
  * Copyright (C) 2011 Evgeniy Egorov
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  */
 package ru.apertum.cbrs485.plugins.events;
 
+import java.util.concurrent.ConcurrentHashMap;
 import ru.apertum.cbrs485.core.Event;
 import ru.apertum.cbrs485.core.Sender485;
 import ru.apertum.qsystem.common.CustomerState;
@@ -25,34 +26,55 @@ import ru.apertum.qsystem.extra.IChangeCustomerStateEvent;
 import ru.apertum.cbrs485.plugins.IClientboardRS485PluginUID;
 
 /**
- * Плагин во время смены статуса клиенту отсылает статистику в сервер
- * отображений зональных табло по сети
+ * Плагин во время смены статуса клиенту выводит его номер на табло RS485 над окном оператора:
+ * вызов - номер мигает, начало приема - номер горит, завершение - табло гаснет.
+ *
  * @author Evgeniy Egorov
  */
 public class EventSender implements IChangeCustomerStateEvent, IClientboardRS485PluginUID {
 
+    /**
+     * Окно, куда вызвали талон. При завершении у клиента оператора уже может не быть,
+     * а гасить надо то же табло, где номер горел.
+     */
+    private static final ConcurrentHashMap<String, String> POINT_BY_TICKET = new ConcurrentHashMap<>();
+
     @Override
     public void change(String userPoint, String customerPrefix, int customerNumber, CustomerState cs) {
-        Sender485.getInstance().send(new Event(userPoint, customerPrefix + customerNumber, customerPrefix, customerNumber, cs));
+        send(userPoint, customerPrefix, customerNumber, cs);
     }
 
     @Override
     public void change(QCustomer qc, CustomerState cs, Long newServiceId) {
-        // Создаем событие
-        String nom = qc.getPrefix() + qc.getNumber();
+        send(qc.getUser() == null ? null : qc.getUser().getPoint(), qc.getPrefix(), qc.getNumber(), cs);
+    }
+
+    private static void send(String userPoint, String prefix, int number, CustomerState cs) {
+        final String ticket = (prefix == null ? "" : prefix) + number;
+        String point = userPoint;
+        final String nom;
         switch (cs) {
             case STATE_INVITED:
-                break;
             case STATE_INVITED_SECONDARY:
-                break;
             case STATE_WORK:
-                break;
             case STATE_WORK_SECONDARY:
+                if (point == null) {
+                    return;
+                }
+                POINT_BY_TICKET.put(ticket, point);
+                nom = ticket;
                 break;
             case STATE_DEAD:
             case STATE_FINISH:
             case STATE_POSTPONED:
             case STATE_REDIRECT:
+                final String last = POINT_BY_TICKET.remove(ticket);
+                if (point == null) {
+                    point = last;
+                }
+                if (point == null) {
+                    return;
+                }
                 // Очищаем табло (5 пробелов)
                 nom = "     ";
                 break;
@@ -60,11 +82,7 @@ public class EventSender implements IChangeCustomerStateEvent, IClientboardRS485
                 // Для других состояний не отправляем на табло
                 return;
         }
-        
-        // Отправляем событие на табло
-        if (qc.getUser() != null) {
-            Sender485.getInstance().send(new Event(qc.getUser().getPoint(), nom, qc.getPrefix(), qc.getNumber(), cs));
-        }
+        Sender485.getInstance().send(new Event(point, nom, prefix, number, cs));
     }
 
     @Override

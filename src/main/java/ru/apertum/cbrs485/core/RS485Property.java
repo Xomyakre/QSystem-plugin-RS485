@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -401,52 +403,37 @@ public class RS485Property {
                         break;
                     }
                 }
-                final ISerialPort port;
-
                 if (pp == null) {
-                    if (PORTS.get(rs485Property.getPortName()) == null) {
+                    ISerialPort port = PORTS.get(rsp.getPortName());
+                    if (port == null) {
                         port = rsp.getDefaultPort();
-                        PORTS.put(rs485Property.getPortName(), port);
-                    } else {
-                        port = PORTS.get(rs485Property.getPortName());
+                        PORTS.put(rsp.getPortName(), port);
                     }
-
-                } else {
-                    if (PORTS.get(rs485Property.getPortName()) == null) {
-
-                        System.out.println("Get personal port " + pp.portName);
-                        try {
-                            port = new RxtxSerialPort(pp.portName);
-                            PORTS.put(pp.portName, port);
-                        } catch (Exception ex) {
-                            System.err.println(ex);
-                            throw new RuntimeException(ex);
-                        }
+                    return port;
+                }
+                ISerialPort port = PORTS.get(pp.portName);
+                if (port == null) {
+                    System.out.println("Get personal port " + pp.portName);
+                    try {
+                        port = new RxtxSerialPort(pp.portName);
                         port.setSpeed(pp.speed);
                         port.setDataBits(pp.bits);
                         port.setParity(pp.parity ? 1 : 0);
                         port.setStopBits(pp.stopBits);
-
-                        try {
-                            port.bind(new IReceiveListener() {
-
-                                @Override
-                                public void actionPerformed(SerialPortEvent spe, byte[] bytes) {
-                                    System.out.println("!!!!!!!!!!!!!!!!!!!! " + Arrays.toString(bytes));
-                                }
-
-                                @Override
-                                public void actionPerformed(SerialPortEvent spe) {
-                                }
-                            });
-                        } catch (Exception ex) {
-                            System.err.println(ex);
-                            throw new RuntimeException(ex);
-                        }
-
-                    } else {
-                        port = PORTS.get(rs485Property.getPortName());
+                        port.bind(new IReceiveListener() {
+                            @Override
+                            public void actionPerformed(SerialPortEvent spe, byte[] bytes) {
+                                System.out.println("!!!!!!!!!!!!!!!!!!!! " + Arrays.toString(bytes));
+                            }
+                            @Override
+                            public void actionPerformed(SerialPortEvent spe) {
+                            }
+                        });
+                    } catch (Exception ex) {
+                        System.err.println(ex);
+                        throw new RuntimeException(ex);
                     }
+                    PORTS.put(pp.portName, port);
                 }
                 return port;
             }
@@ -599,34 +586,62 @@ public class RS485Property {
             this.pr9800 = pr9800;
         }
 
-        private static final HashSet<Protocol> pset = new HashSet<>();
+        private List<Protocol> all() {
+            final List<Protocol> list = new ArrayList<>();
+            for (Protocol p : new Protocol[]{qsystem, svetovod, svetovodM, ssi, leddisplay, solt, akis, docash, pr9800}) {
+                if (p != null) {
+                    list.add(p);
+                }
+            }
+            return list;
+        }
 
         public Protocol getDefaultPtotocol() {
-            for (Protocol pset1 : pset) {
-                if (pset1.isDef()) {
-                    return pset1;
+            for (Protocol p : all()) {
+                if (Boolean.TRUE.equals(p.isDef())) {
+                    return p;
                 }
             }
             return qsystem;
         }
 
         public Protocol getPtotocolByN(Integer n) {
-            for (Protocol pset1 : pset) {
-                if (pset1.getNProtocol().equals(n)) {
-                    return pset1;
+            if (n != null) {
+                for (Protocol p : all()) {
+                    if (n.equals(p.getNProtocol())) {
+                        return p;
+                    }
                 }
             }
             return getDefaultPtotocol();
         }
+
+//        private static final HashSet<Protocol> pset = new HashSet<>();
+//
+//        public Protocol getDefaultPtotocol() {
+//            for (Protocol pset1 : pset) {
+//                if (pset1.isDef()) {
+//                    return pset1;
+//                }
+//            }
+//            return qsystem;
+//        }
+//
+//        public Protocol getPtotocolByN(Integer n) {
+//            for (Protocol pset1 : pset) {
+//                if (pset1.getNProtocol().equals(n)) {
+//                    return pset1;
+//                }
+//            }
+//            return getDefaultPtotocol();
+//        }
 
     }
 
     @XmlRootElement(name = "protocol")
     public static abstract class Protocol implements IProtocol {
 
-        {
-            Protocols.pset.add(this);
-        }
+
 
         private Boolean def;
 

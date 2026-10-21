@@ -54,6 +54,13 @@ public class Sender485 {
      */
     private static final long DUPLICATE_WINDOW_MS = 1000;
 
+    /**
+     * Закрывать порт, когда никого не обслуживают. Открытие порта в Windows занимает несколько секунд
+     * (библиотека перебирает все COM порты), поэтому по умолчанию порт держим открытым,
+     * иначе каждый вызов клиента появляется на табло с задержкой. Включить: -Drs485.release=true
+     */
+    private static final boolean RELEASE_PORT = Boolean.getBoolean("rs485.release");
+
     /** окно -> последнее не отосланное событие */
     final private LinkedHashMap<String, Event> pending = new LinkedHashMap<>();
     final private HashMap<String, String> lastKey = new HashMap<>();
@@ -86,6 +93,9 @@ public class Sender485 {
     }
 
     private void loop() {
+        if (ENABLED && !RELEASE_PORT) {
+            warmUp();
+        }
         while (!Thread.currentThread().isInterrupted()) {
             final Event event;
             try {
@@ -111,6 +121,24 @@ public class Sender485 {
         }
         for (DirectPort p : opened.values()) {
             p.close();
+        }
+    }
+
+    /**
+     * Открываем порты всех табло сразу при старте, чтобы первый вызов клиента не ждал поиска порта.
+     */
+    private void warmUp() {
+        for (Operator operator : props.getOperators()) {
+            try {
+                final ISerialPort cfg = operator.getPort(props);
+                if (!opened.containsKey(cfg.getName())) {
+                    final DirectPort port = new DirectPort(cfg);
+                    port.openIfNeeded();
+                    opened.put(cfg.getName(), port);
+                }
+            } catch (Throwable ex) {
+                PortLog.error("warm up failed for window " + operator.getPoint(), ex);
+            }
         }
     }
 
@@ -174,7 +202,7 @@ public class Sender485 {
             port.write(bytes);
         }
 
-        if (windows.isEmpty()) {
+        if (windows.isEmpty() && RELEASE_PORT) {
             // никого не обслуживают - освобождаем порт до следующего вызова
             port.close();
         }
@@ -231,6 +259,7 @@ public class Sender485 {
         private final int bits;
         private final int stopBits;
         private final int parity;
+        private CommPortIdentifier id;
         private SerialPort port;
         private OutputStream out;
 
@@ -250,10 +279,14 @@ public class Sender485 {
             }
         }
 
-        void write(byte[] bytes) throws Exception {
+        void openIfNeeded() throws Exception {
             if (port == null) {
                 open();
             }
+        }
+
+        void write(byte[] bytes) throws Exception {
+            openIfNeeded();
             out.write(bytes);
             out.flush();
             // ждем, пока байты физически уйдут: 10 бит на байт + запас для переходника RS485
@@ -263,13 +296,17 @@ public class Sender485 {
 
         private void open() throws Exception {
             PortLog.info("OPEN " + name + " speed=" + speed + " bits=" + bits + " stop=" + stopBits + " parity=" + parity);
-            final CommPortIdentifier id = CommPortIdentifier.getPortIdentifier(name);
+            final long start = System.currentTimeMillis();
+            if (id == null) {
+                // поиск порта долгий, делаем его один раз
+                id = CommPortIdentifier.getPortIdentifier(name);
+            }
             // через reflection: в RXTX open() возвращает CommPort, в NRJavaSerial - RXTXPort
             final Object p = id.getClass().getMethod("open", String.class, int.class).invoke(id, "QSystem-RS485", 2000);
             port = (SerialPort) p;
             port.setSerialPortParams(speed, bits, stopBits, parity);
             out = port.getOutputStream();
-            PortLog.info("OPENED " + name);
+            PortLog.info("OPENED " + name + " in " + (System.currentTimeMillis() - start) + " ms");
         }
 
         void close() {

@@ -40,6 +40,15 @@ public class EventSender implements IChangeCustomerStateEvent, IClientboardRS485
      */
     private static final ConcurrentHashMap<String, String> POINT_BY_TICKET = new ConcurrentHashMap<>();
 
+    public EventSender() {
+        // сервер создает плагин при загрузке - сразу готовим порт в фоне, чтобы первый вызов не ждал
+        if (Sender485.isEnabled()) {
+            final Thread t = new Thread(Sender485::getInstance, "ClientboardRS485Plugin-init");
+            t.setDaemon(true);
+            t.start();
+        }
+    }
+
     @Override
     public void change(String userPoint, String customerPrefix, int customerNumber, CustomerState cs) {
         PortLog.info("QSYSTEM change(point) window=" + userPoint + " ticket=" + customerPrefix + customerNumber + " state=" + cs);

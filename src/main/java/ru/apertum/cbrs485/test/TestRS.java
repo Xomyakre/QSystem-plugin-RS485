@@ -1729,6 +1729,22 @@ public class TestRS extends javax.swing.JFrame {
 
     }//GEN-LAST:event_buttonSendActionPerformed
 
+    private ISerialPort openTestPort() throws Exception {
+        final ISerialPort port = new RxtxSerialPort(textFieldPortName.getText());
+        port.setSpeed(Integer.parseInt((String) comboBoxSpeed.getSelectedItem()));
+        port.setDataBits(Integer.parseInt((String) comboBoxBits.getSelectedItem()));
+        port.setParity(checkBoxParity.isSelected() ? 1 : 0);
+        port.setStopBits(Integer.parseInt((String) comboBoxStopBits.getSelectedItem()));
+        return port;
+    }
+
+    private Pr9800 currentPr9800() {
+        if (propXml != null && propXml.getProtocols() != null && propXml.getProtocols().getPr9800() != null) {
+            return propXml.getProtocols().getPr9800();
+        }
+        return new Pr9800();
+    }
+
     private void buttonRefeshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonRefeshActionPerformed
         final JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Выберите файл конфигурации");
@@ -1747,6 +1763,8 @@ public class TestRS extends javax.swing.JFrame {
 
         if (RS485Property.PROP_FILE.exists()) {
             RS485Property prop;
+            jTabbedPane1.addTab("PR9800: вызов → прием → конец",
+                    new Pr9800ScenarioPanel(() -> propXml, this::openTestPort));
             try {
                 prop = RS485Property.unmarshal(new FileInputStream(RS485Property.PROP_FILE));
                 tblPorts.setModel(new PortsTableModel(prop));

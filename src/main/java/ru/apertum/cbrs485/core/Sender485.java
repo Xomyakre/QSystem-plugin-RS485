@@ -58,7 +58,7 @@ public class Sender485 {
         } catch (JAXBException | FileNotFoundException ex) {
             throw new RuntimeException(ex);
         }
-        System.out.println("Sender ready (v2): default port=" + props.getPortName() + " protocol=" + props.getProtocols().getDefaultPtotocol());
+        System.out.println("Sender ready (v3, enabled=" + ENABLED + "): default port=" + props.getPortName() + " protocol=" + props.getProtocols().getDefaultPtotocol());
 
         // поток для отсыла стартуем один раз и навсегда
         sndThread = new Thread(this::loop, "ClientboardRS485Plugin-sender");
@@ -124,7 +124,23 @@ public class Sender485 {
         }
     }
 
+    /**
+     * Шлем в порт только из процесса сервера. Программа оператора на том же компьютере
+     * грузит этот же плагин и меняет статусы своим устаревшим копиям клиентов,
+     * из-за чего на табло всплывали прошлые номера.
+     * Для персонального табло у оператора запускать клиента с -Drs485.client=true
+     */
+    private static final boolean ENABLED = Boolean.getBoolean("rs485.client")
+            || String.valueOf(System.getProperty("sun.java.command")).startsWith("ru.apertum.qsystem.Server");
+
+    public static boolean isEnabled() {
+        return ENABLED;
+    }
+
     public void send(Event event) {
+        if (!ENABLED) {
+            return;
+        }
         if (event == null || event.point == null || event.point.trim().isEmpty()) {
             // у клиента еще нет окна, например он только встал в очередь
             return;

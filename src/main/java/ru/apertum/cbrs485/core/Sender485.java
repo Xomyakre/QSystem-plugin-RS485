@@ -7,15 +7,17 @@ package ru.apertum.cbrs485.core;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.xml.bind.JAXBException;
 import ru.apertum.cbrs485.core.RS485Property.Operator;
-import ru.apertum.qsystem.common.CustomerState;
 import ru.evgenic.rxtx.serialPort.ISerialPort;
-import ru.evgenic.rxtx.serialPort.RxtxSerialPort;
 
 /**
  * Создает поток, в потоке порт и им шлет.
+ * Для каждого окна хранится только самое свежее событие: если порт не успевает,
+ * устаревшие номера просто выбрасываются и на табло не попадают.
  *
  * @author Evgeniy Egorov
  */
@@ -31,12 +33,20 @@ public class Sender485 {
     }
 
     /**
+     * Минимальная пауза между посылками, мс. Порт открывается и закрывается на каждую посылку,
+     * без паузы следующая посылка может уйти раньше предыдущей.
+     */
+    private static final long MIN_PAUSE_MS = 500;
+
+    /**
      * Одинаковое событие для того же окна в пределах этого времени считается дублем:
      * QSystem может дернуть оба метода change() на одну смену статуса.
      */
     private static final long DUPLICATE_WINDOW_MS = 1000;
 
-    final private LinkedBlockingQueue<Event> stream = new LinkedBlockingQueue<>();
+    /** окно -> последнее не отосланное событие */
+    final private LinkedHashMap<String, Event> pending = new LinkedHashMap<>();
+    /** окно -> последнее отосланное событие (state|ticket) */
     final private HashMap<String, String> lastKey = new HashMap<>();
     final private HashMap<String, Long> lastTime = new HashMap<>();
     final private Thread sndThread;
@@ -48,7 +58,7 @@ public class Sender485 {
         } catch (JAXBException | FileNotFoundException ex) {
             throw new RuntimeException(ex);
         }
-        System.out.println("Sender ready: default port=" + props.getPortName() + " protocol=" + props.getProtocols().getDefaultPtotocol());
+        System.out.println("Sender ready (v2): default port=" + props.getPortName() + " protocol=" + props.getProtocols().getDefaultPtotocol());
 
         // поток для отсыла стартуем один раз и навсегда
         sndThread = new Thread(this::loop, "ClientboardRS485Plugin-sender");
@@ -60,7 +70,7 @@ public class Sender485 {
         while (!Thread.currentThread().isInterrupted()) {
             final Event event;
             try {
-                event = stream.take();
+                event = takeNext();
             } catch (InterruptedException ex) {
                 break;
             }
@@ -72,10 +82,22 @@ public class Sender485 {
                 ex.printStackTrace();
             }
             try {
-                Thread.sleep(200);
+                Thread.sleep(Math.max(MIN_PAUSE_MS, props.getPause()));
             } catch (InterruptedException ex) {
                 break;
             }
+        }
+    }
+
+    private Event takeNext() throws InterruptedException {
+        synchronized (pending) {
+            while (pending.isEmpty()) {
+                pending.wait();
+            }
+            final Iterator<Map.Entry<String, Event>> it = pending.entrySet().iterator();
+            final Event event = it.next().getValue();
+            it.remove();
+            return event;
         }
     }
 
@@ -97,16 +119,8 @@ public class Sender485 {
         }
         final ISerialPort port = operator.getPort(props);
         System.out.println("SEND TO RS485 [" + event.point + " " + event.state + " '" + event.ticket + "'] " + s);
-        if (port instanceof RxtxSerialPort) {
-            final RxtxSerialPort rp = (RxtxSerialPort) port;
-            System.out.println("PORT " + port.getName() + " speed=" + rp.getSpeed() + " bits=" + rp.getDataBits()
-                    + " stop=" + rp.getStopBits() + " patity=" + rp.getParity());
-        }
         synchronized (this) {
             port.send(bytes);
-            if (props.getPause() > 0) {
-                Thread.sleep(props.getPause());
-            }
         }
     }
 
@@ -118,17 +132,12 @@ public class Sender485 {
         if (isDuplicate(event)) {
             return;
         }
-
-        // Если это состояние завершения, очистим очередь для этого окна,
-        // чтобы номер не появился снова после очистки табло
-        if (event.state == CustomerState.STATE_FINISH
-                || event.state == CustomerState.STATE_DEAD
-                || event.state == CustomerState.STATE_POSTPONED
-                || event.state == CustomerState.STATE_REDIRECT) {
-            stream.removeIf(e -> e.point.equalsIgnoreCase(event.point));
+        synchronized (pending) {
+            // старое не отосланное событие этого окна больше не нужно, его заменяет новое
+            pending.remove(event.point);
+            pending.put(event.point, event);
+            pending.notifyAll();
         }
-
-        stream.offer(event);
     }
 
     private synchronized boolean isDuplicate(Event event) {

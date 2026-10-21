@@ -22,6 +22,7 @@ repositories {
 
 // Создание "fat JAR" со всеми зависимостями
 jar {
+    exclude 'gnu/io/**'
     manifest {
         attributes 'Main-Class': 'ru.apertum.cbrs485.test.TestRS'
     }

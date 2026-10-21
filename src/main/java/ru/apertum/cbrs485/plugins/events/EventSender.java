@@ -19,6 +19,7 @@ package ru.apertum.cbrs485.plugins.events;
 
 import java.util.concurrent.ConcurrentHashMap;
 import ru.apertum.cbrs485.core.Event;
+import ru.apertum.cbrs485.core.PortLog;
 import ru.apertum.cbrs485.core.Sender485;
 import ru.apertum.qsystem.common.CustomerState;
 import ru.apertum.qsystem.common.model.QCustomer;
@@ -41,12 +42,15 @@ public class EventSender implements IChangeCustomerStateEvent, IClientboardRS485
 
     @Override
     public void change(String userPoint, String customerPrefix, int customerNumber, CustomerState cs) {
+        PortLog.info("QSYSTEM change(point) window=" + userPoint + " ticket=" + customerPrefix + customerNumber + " state=" + cs);
         send(userPoint, customerPrefix, customerNumber, cs);
     }
 
     @Override
     public void change(QCustomer qc, CustomerState cs, Long newServiceId) {
-        send(qc.getUser() == null ? null : qc.getUser().getPoint(), qc.getPrefix(), qc.getNumber(), cs);
+        final String point = qc.getUser() == null ? null : qc.getUser().getPoint();
+        PortLog.info("QSYSTEM change(customer) window=" + point + " ticket=" + qc.getPrefix() + qc.getNumber() + " state=" + cs);
+        send(point, qc.getPrefix(), qc.getNumber(), cs);
     }
 
     private static void send(String userPoint, String prefix, int number, CustomerState cs) {

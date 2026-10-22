@@ -20,21 +20,30 @@ Follow the steps below to install and configure the plugin.
 
 ### Steps
 
-1. **Download the plugin**
+### 1. Download the Plugin
 
-   Download the file Clientboardrs485plugin-10.2.jar. It contains the entire project compiled. You will also need the required .dll files ----> rxtxParallel.dll //// rxtxSerial.dll and the adminRS485.bat/adminRS485.sh file (depending on the system)
+Download the following files required for installation:
 
-   Optional files to download ----> config/ClientboardRS485Plugin.xml
+**Main plugin**
+- `Clientboardrs485plugin-10.2.jar` — the compiled plugin containing the project implementation.
 
-2. **Copy the plugin files**
+**Required libraries and scripts**
+- `rxtxParallel.dll`
+- `rxtxSerial.dll`
+- `adminRS485.bat` — for Windows
+- `adminRS485.sh` — for Linux
 
-   Replace file in QSystem
+**Configuration**
+- `config/ClientboardRS485Plugin.xml`
+
+### 2. Install the Plugin
+
+Copy the downloaded files into the appropriate QSystem directories, replacing the existing files where required.
+
+Make sure that the plugin JAR, required libraries, startup script, and configuration file are placed in their correct locations.
 
 
 ## Compatibility
 
-Compatibility depends on the QSystem version, Java runtime, hardware, and supported communication protocol.
+### Java 1.8 and later
 
-## License
-
-Refer to the original project's license and applicable third-party dependencies.

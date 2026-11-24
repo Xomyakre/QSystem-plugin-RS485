@@ -1,3 +1,5 @@
+# New version on support SM7 || Solt protocol  - [PUMP](https://github.com/Xomyakre/SM7-plugin)
+
 # QSystem RS485 Plugin
 
 A plugin for [QSystem](https://github.com/malashta/apertum-qsystem.rs485-plugin) that extends the original functionality by adding support for an additional RS485 communication protocol.
